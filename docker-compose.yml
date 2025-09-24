@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: smart-meeting-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: smart_meeting_ai
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - smart-meeting-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smart-meeting-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://admin:password123@mongodb:27017/smart_meeting_ai?authSource=admin
+      - DATABASE_NAME=smart_meeting_ai
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - uploaded_files:/app/uploads
+    networks:
+      - smart-meeting-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smart-meeting-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_ENVIRONMENT=development
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - smart-meeting-network
+
+volumes:
+  mongodb_data:
+  uploaded_files:
+
+networks:
+  smart-meeting-network:
+    driver: bridge
